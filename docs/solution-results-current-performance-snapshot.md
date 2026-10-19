@@ -9,6 +9,12 @@ their results with this snapshot before replacing the simpler design.
 
 Snapshot date: **2026-09-12**
 
+> **Historical aggregate representation:** These measurements were captured
+> before running sums and `PriceAverage.totalPriceMicros` changed from `long` to
+> `BigInteger`. They remain useful as the former fixed-width baseline, but their
+> allocation, GC, heap, and latency values should not be treated as measurements
+> of the current implementation. Re-profile before making a performance decision.
+
 ## Implementation under test
 
 The baseline uses:
@@ -16,6 +22,7 @@ The baseline uses:
 - A `ConcurrentHashMap` ticker registry
 - One mutable `TickerState` per ticker
 - `synchronized` ingestion and average operations on each `TickerState`
+- Fixed-width `long` running sums, which have since been replaced by `BigInteger`
 - Separate two-minute and five-minute `ArrayDeque` histories
 - Running sum and count for each window
 - Direct synchronous engine calls with no receiver or worker queue

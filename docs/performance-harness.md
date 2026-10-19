@@ -149,11 +149,65 @@ jfr print --events jdk.JavaMonitorEnter,jdk.ExecutionSample \
 The baseline invokes the engine directly, so a recording can show blocked caller
 threads but cannot show receiver/worker queue buildup: no such queue exists.
 
+## Five-minute expiry soak
+
+Run the optional expiry soak with:
+
+```bash
+./scripts/expiry-soak-test.sh
+```
+
+The script runs the baseline and snapshot engines under both hot/cold and Zipf
+traffic. Each case uses a five-second warm-up and a 310-second measured phase so
+both rolling-window expiry boundaries are crossed. The default rate is reduced
+to 5,000 writes and 5,000 reads per second with 1,000 tickers to keep retained
+history and total local runtime manageable. Running all four cases takes about
+21 minutes before final accuracy-audit overhead. Normal load-harness overrides
+can be appended to the command.
+
+This is deliberately separate from `./scripts/test.sh`: it validates sustained
+expiry behavior and resource trends, while the fast suite uses logical time jumps
+to cover the same boundary semantics deterministically.
+
+### BigInteger expiry-soak result
+
+The complete four-case soak was run on 2026-10-19 using OpenJDK 21.0.12.1 after
+running sums and `PriceAverage.totalPriceMicros` changed to `BigInteger`.
+
+| Metric | Baseline hot/cold | Baseline Zipf | Snapshot hot/cold | Snapshot Zipf |
+| --- | ---: | ---: | ---: | ---: |
+| Accepted writes | 1,550,000 | 1,550,003 | 1,550,000 | 1,550,003 |
+| Rejected writes | 0 | 0 | 0 | 0 |
+| Write/read rate | 5,000/s / 5,000/s | 5,000/s / 5,000/s | 5,000/s / 5,000/s | 5,000/s / 5,000/s |
+| Accuracy mismatches | 0 | 0 | 0 | 0 |
+| Write p99 | 5.208 us | 3.333 us | 5.417 us | 3.500 us |
+| Read p99 | 3.958 us | 2.875 us | 3.167 us | 2.500 us |
+| Snapshot fast reads | N/A | N/A | 1,342,331 (86.602%) | 1,343,024 (86.651%) |
+| Snapshot stale refreshes | N/A | N/A | 207,665 | 206,897 |
+| Peak heap | 252.5 MiB | 211.7 MiB | 283.9 MiB | 278.7 MiB |
+| Allocation | 575.7 MiB; 194.7 bytes/op | 580.3 MiB; 196.3 bytes/op | 669.5 MiB; 226.5 bytes/op | 674.1 MiB; 228.0 bytes/op |
+| GC | 6 collections; 49 ms | 7 collections; 50 ms | 6 collections; 49 ms | 6 collections; 43 ms |
+| Verdict | Sustained | Sustained | Sustained | Sustained |
+
+Every case crossed both expiry boundaries, completed its final 2,000-average
+reference audit with zero mismatches, and sustained its configured rates. In this
+run the snapshot engine improved read p99 but made write p99 and allocation worse;
+it allocated about 16% more bytes per operation than the corresponding baseline.
+Approximately 13.4% of snapshot reads entered the stale-refresh path after expiry
+became active.
+
+The reduced 5,000/s rate makes this an expiry-correctness and resource-behavior
+soak, not a replacement for the earlier 50,000/s and 100,000/s capacity tests.
+The 310-second phase crosses the five-minute boundary only once, so a longer run
+is still needed to establish repeated-cycle steady-state heap behavior.
+
 ## Local baseline result
 
 The default workload was run on 2026-09-12 using OpenJDK 17.0.14. This is a
 developer-machine observation, not a production capacity guarantee or a result
-that should be assumed on other hardware.
+that should be assumed on other hardware. It also predates the switch from
+`long` to `BigInteger` running sums, so its allocation and latency figures are a
+historical comparison point rather than current measurements.
 
 | Metric | Observed result |
 | --- | ---: |

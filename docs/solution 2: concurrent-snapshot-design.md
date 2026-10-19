@@ -2,8 +2,10 @@
 
 ## Status
 
-This document describes a possible future design. It is not implemented by the
-current engine, which synchronizes reads and writes on each `TickerState`.
+This document describes the experimental snapshot alternative implemented by
+`SnapshotPriceIngestionEngine`. It is not the selected baseline: the baseline
+still synchronizes reads and writes on each `TickerState`, while the experiment
+is retained for correctness and performance comparison.
 
 ## Goal
 
@@ -78,9 +80,9 @@ record AverageSnapshot(
         long version,
         long lastSequenceNumber,
         long effectiveTimestampMillis,
-        long twoMinuteSum,
+        BigInteger twoMinuteSum,
         int twoMinuteCount,
-        long fiveMinuteSum,
+        BigInteger fiveMinuteSum,
         int fiveMinuteCount) {
 }
 ```

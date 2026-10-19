@@ -3,6 +3,7 @@ package prices.engine;
 import prices.enums.Window;
 import prices.model.PriceAverage;
 import prices.model.Quote;
+import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
@@ -18,8 +19,8 @@ final class SnapshotTickerState {
     private final AtomicReference<AverageSnapshot> published =
             new AtomicReference<>(AverageSnapshot.empty());
 
-    private long twoMinuteSum;
-    private long fiveMinuteSum;
+    private BigInteger twoMinuteSum = BigInteger.ZERO;
+    private BigInteger fiveMinuteSum = BigInteger.ZERO;
     private long lastSequenceNumber = -1;
     private long lastTimestampMillis = -1;
 
@@ -32,8 +33,9 @@ final class SnapshotTickerState {
         }
 
         expire(quote.timestampMillis());
-        long updatedTwoMinuteSum = Math.addExact(twoMinuteSum, quote.priceMicros());
-        long updatedFiveMinuteSum = Math.addExact(fiveMinuteSum, quote.priceMicros());
+        BigInteger priceMicros = BigInteger.valueOf(quote.priceMicros());
+        BigInteger updatedTwoMinuteSum = twoMinuteSum.add(priceMicros);
+        BigInteger updatedFiveMinuteSum = fiveMinuteSum.add(priceMicros);
 
         twoMinuteQuotes.addLast(quote);
         fiveMinuteQuotes.addLast(quote);
@@ -96,9 +98,10 @@ final class SnapshotTickerState {
                 nextExpiry(fiveMinuteQuotes, Window.FIVE_MINUTES)));
     }
 
-    private static long expireBeforeOrAt(Deque<Quote> quotes, long sum, long cutoffMillis) {
+    private static BigInteger expireBeforeOrAt(
+            Deque<Quote> quotes, BigInteger sum, long cutoffMillis) {
         while (!quotes.isEmpty() && quotes.peekFirst().timestampMillis() <= cutoffMillis) {
-            sum = Math.subtractExact(sum, quotes.removeFirst().priceMicros());
+            sum = sum.subtract(BigInteger.valueOf(quotes.removeFirst().priceMicros()));
         }
         return sum;
     }
@@ -120,15 +123,16 @@ final class SnapshotTickerState {
 
     private record AverageSnapshot(
             long lastTimestampMillis,
-            long twoMinuteSum,
+            BigInteger twoMinuteSum,
             int twoMinuteCount,
-            long fiveMinuteSum,
+            BigInteger fiveMinuteSum,
             int fiveMinuteCount,
             long twoMinuteValidUntilMillis,
             long fiveMinuteValidUntilMillis) {
 
         private static AverageSnapshot empty() {
-            return new AverageSnapshot(-1, 0, 0, 0, 0, NO_EXPIRY, NO_EXPIRY);
+            return new AverageSnapshot(
+                    -1, BigInteger.ZERO, 0, BigInteger.ZERO, 0, NO_EXPIRY, NO_EXPIRY);
         }
 
         private long validUntil(Window window) {
@@ -139,7 +143,7 @@ final class SnapshotTickerState {
         }
 
         private Optional<PriceAverage> average(Window window) {
-            long sum = window == Window.TWO_MINUTES ? twoMinuteSum : fiveMinuteSum;
+            BigInteger sum = window == Window.TWO_MINUTES ? twoMinuteSum : fiveMinuteSum;
             int count = window == Window.TWO_MINUTES ? twoMinuteCount : fiveMinuteCount;
             return count == 0
                     ? Optional.empty()

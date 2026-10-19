@@ -1,5 +1,6 @@
 package prices.load;
 
+import java.math.BigInteger;
 import prices.engine.InMemoryPriceIngestionEngine;
 import prices.enums.Window;
 import prices.model.Quote;
@@ -127,11 +128,11 @@ public final class LoadHarnessSupportTest {
         reference.accept(new Quote("AAPL", 400_000_000, now, 3));
 
         assertEquals(
-                600_000_000,
+                BigInteger.valueOf(600_000_000),
                 reference.average(now, Window.TWO_MINUTES).orElseThrow().totalPriceMicros(),
                 "reference two-minute sum");
         assertEquals(
-                700_000_000,
+                BigInteger.valueOf(700_000_000),
                 reference.average(now, Window.FIVE_MINUTES).orElseThrow().totalPriceMicros(),
                 "reference five-minute sum");
     }

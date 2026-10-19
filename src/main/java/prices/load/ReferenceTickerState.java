@@ -3,6 +3,7 @@ package prices.load;
 import prices.enums.Window;
 import prices.model.PriceAverage;
 import prices.model.Quote;
+import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
@@ -24,13 +25,13 @@ final class ReferenceTickerState {
 
     Optional<PriceAverage> average(long currentTimestampMillis, Window window) {
         long cutoffMillis = currentTimestampMillis - window.durationMillis();
-        long sum = 0;
+        BigInteger sum = BigInteger.ZERO;
         long count = 0;
 
         for (Quote quote : quotes) {
             if (quote.timestampMillis() > cutoffMillis
                     && quote.timestampMillis() <= currentTimestampMillis) {
-                sum = Math.addExact(sum, quote.priceMicros());
+                sum = sum.add(BigInteger.valueOf(quote.priceMicros()));
                 count++;
             }
         }

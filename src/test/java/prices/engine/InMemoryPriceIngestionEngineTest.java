@@ -5,6 +5,7 @@ import prices.enums.Window;
 import prices.model.PriceAverage;
 import prices.model.Quote;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,7 @@ public final class InMemoryPriceIngestionEngineTest {
         engine.ingest(quote("MSFT", 300_000_000, now, 2));
 
         PriceAverage twoMinute = engine.getTwoMinuteAverage("MSFT", now).orElseThrow();
-        assertEquals(300_000_000L, twoMinute.totalPriceMicros(), "two-minute sum");
+        assertBigIntegerEquals(300_000_000L, twoMinute.totalPriceMicros(), "two-minute sum");
         assertEquals(1L, twoMinute.quoteCount(), "two-minute count");
         assertEquals(2L, engine.getFiveMinuteAverage("MSFT", now).orElseThrow().quoteCount(), "five-minute count");
     }
@@ -62,8 +63,14 @@ public final class InMemoryPriceIngestionEngineTest {
         engine.ingest(quote("AAPL", 100_000_000, 1_000, 1));
         engine.ingest(quote("MSFT", 250_000_000, 1_000, 1));
 
-        assertEquals(100_000_000L, engine.getTwoMinuteAverage("AAPL", 1_000).orElseThrow().totalPriceMicros(), "AAPL sum");
-        assertEquals(250_000_000L, engine.getTwoMinuteAverage("MSFT", 1_000).orElseThrow().totalPriceMicros(), "MSFT sum");
+        assertBigIntegerEquals(
+                100_000_000L,
+                engine.getTwoMinuteAverage("AAPL", 1_000).orElseThrow().totalPriceMicros(),
+                "AAPL sum");
+        assertBigIntegerEquals(
+                250_000_000L,
+                engine.getTwoMinuteAverage("MSFT", 1_000).orElseThrow().totalPriceMicros(),
+                "MSFT sum");
         assertEquals(2L, engine.tickerCount(), "ticker count");
     }
 
@@ -134,6 +141,12 @@ public final class InMemoryPriceIngestionEngineTest {
 
     private static void assertEquals(long expected, long actual, String description) {
         if (expected != actual) {
+            throw new AssertionError(description + ": expected " + expected + " but was " + actual);
+        }
+    }
+
+    private static void assertBigIntegerEquals(long expected, BigInteger actual, String description) {
+        if (!BigInteger.valueOf(expected).equals(actual)) {
             throw new AssertionError(description + ": expected " + expected + " but was " + actual);
         }
     }

@@ -45,6 +45,22 @@ public final class SnapshotPriceIngestionEngineLincheckTest {
                 .orElse("empty");
     }
 
+    @Operation
+    public String readTwoMinuteAverageAtExpiry() {
+        return engine.getTwoMinuteAverage(
+                        TICKER, TIMESTAMP_MILLIS + prices.enums.Window.TWO_MINUTES.durationMillis())
+                .map(SnapshotPriceIngestionEngineLincheckTest::snapshot)
+                .orElse("empty");
+    }
+
+    @Operation
+    public String readFiveMinuteAverageAtExpiry() {
+        return engine.getFiveMinuteAverage(
+                        TICKER, TIMESTAMP_MILLIS + prices.enums.Window.FIVE_MINUTES.durationMillis())
+                .map(SnapshotPriceIngestionEngineLincheckTest::snapshot)
+                .orElse("empty");
+    }
+
     @Test
     public void operationsAreLinearizableUnderModelChecking() {
         new ModelCheckingOptions()

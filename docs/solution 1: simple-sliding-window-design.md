@@ -50,8 +50,9 @@ Producing an average from the maintained sum and count does not scan all active
 quotes. Expiring `k` quotes is O(k) for that operation, but amortized O(1) per
 quote because each quote is appended and removed once from each queue.
 
-Prices are represented as fixed-point millionths in a `long`. Sum updates use
-exact arithmetic so overflow throws rather than silently corrupting an average.
+Individual prices are represented as fixed-point millionths in a `long`. Running
+sums use `BigInteger`, allowing an aggregate to grow beyond the `long` range
+without overflow and keeping expiry as a direct subtract-and-remove operation.
 Duplicate and stale sequence numbers are rejected per ticker.
 
 ### Synchronization

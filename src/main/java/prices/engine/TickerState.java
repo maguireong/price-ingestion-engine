@@ -3,6 +3,7 @@ package prices.engine;
 import prices.enums.Window;
 import prices.model.PriceAverage;
 import prices.model.Quote;
+import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
@@ -12,8 +13,8 @@ final class TickerState {
     private final Deque<Quote> twoMinuteQuotes = new ArrayDeque<>();
     private final Deque<Quote> fiveMinuteQuotes = new ArrayDeque<>();
 
-    private long twoMinuteSum;
-    private long fiveMinuteSum;
+    private BigInteger twoMinuteSum = BigInteger.ZERO;
+    private BigInteger fiveMinuteSum = BigInteger.ZERO;
     private long lastSequenceNumber = -1;
     private long lastTimestampMillis = -1;
 
@@ -28,13 +29,10 @@ final class TickerState {
             throw new IllegalArgumentException("quote timestamps must not move backwards for a ticker");
         }
 
-        // Remove quotes that have expired
         expire(quote.timestampMillis());
-
-        // Calculate both sums first so an overflow cannot leave only one window
-        // updated. Math.addExact throws instead of silently wrapping the value.
-        long updatedTwoMinuteSum = Math.addExact(twoMinuteSum, quote.priceMicros());
-        long updatedFiveMinuteSum = Math.addExact(fiveMinuteSum, quote.priceMicros());
+        BigInteger priceMicros = BigInteger.valueOf(quote.priceMicros());
+        BigInteger updatedTwoMinuteSum = twoMinuteSum.add(priceMicros);
+        BigInteger updatedFiveMinuteSum = fiveMinuteSum.add(priceMicros);
 
         // The same quote contributes to both windows until each one expires it.
         twoMinuteQuotes.addLast(quote);
@@ -71,14 +69,15 @@ final class TickerState {
                 currentTimestampMillis - Window.FIVE_MINUTES.durationMillis());
     }
 
-    private static long expireBeforeOrAt(Deque<Quote> quotes, long sum, long cutoffMillis) {
+    private static BigInteger expireBeforeOrAt(
+            Deque<Quote> quotes, BigInteger sum, long cutoffMillis) {
         while (!quotes.isEmpty() && quotes.peekFirst().timestampMillis() <= cutoffMillis) {
-            sum = Math.subtractExact(sum, quotes.removeFirst().priceMicros());
+            sum = sum.subtract(BigInteger.valueOf(quotes.removeFirst().priceMicros()));
         }
         return sum;
     }
 
-    private static Optional<PriceAverage> toAverage(long sum, int count) {
+    private static Optional<PriceAverage> toAverage(BigInteger sum, int count) {
         return count == 0
                 ? Optional.empty()
                 : Optional.of(new PriceAverage(sum, count));
